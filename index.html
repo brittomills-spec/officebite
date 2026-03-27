@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OfficeBite - Collect Food</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- 🔥 PASTE YOUR FIREBASE SDK SCRIPTS HERE (from Firebase console) -->
+  <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
+    authDomain: "officebite-2026.firebaseapp.com",
+    projectId: "officebite-2026",
+    storageBucket: "officebite-2026.firebasestorage.app",
+    messagingSenderId: "221687690326",
+    appId: "1:221687690326:web:6e164899382ada305177f7",
+    measurementId: "G-75LVRGSW2C"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <style>
+    body { font-family: system-ui; }
+    #reader { width: 100%; max-width: 420px; margin: 0 auto; border-radius: 16px; overflow: hidden; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-emerald-50 min-h-screen">
+  <div class="max-w-md mx-auto p-6">
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-emerald-600">🍱 OfficeBite</h1>
+      <p class="text-gray-600 mt-1">Scan & Collect Breakfast</p>
+    </div>
+
+    <div id="scanner-screen" class="space-y-6">
+      <div class="bg-white rounded-3xl shadow-xl p-6">
+        <button onclick="startScanner()" 
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-5 rounded-2xl text-xl flex items-center justify-center gap-3">
+          📸 Scan QR to Collect
+        </button>
+        <p class="text-center text-xs text-gray-500 mt-4">Point camera at the QR code at the food counter</p>
+      </div>
+    </div>
+
+    <div id="result-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div id="coupon" class="border-2 border-dashed border-emerald-400 rounded-2xl p-8 mb-6"></div>
+      <button onclick="resetApp()" 
+              class="text-emerald-600 font-medium">Done ✓</button>
+    </div>
+
+    <div id="already-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div class="text-6xl mb-4">🙅‍♂️</div>
+      <h2 class="text-2xl font-semibold text-gray-800">Already Collected Today</h2>
+      <p class="text-gray-600 mt-2">You can collect again tomorrow. Thanks!</p>
+      <button onclick="resetApp()" class="mt-8 text-emerald-600 font-medium">Back</button>
+    </div>
+  </div>
+
+  <script>
+    // 🔥 PASTE YOUR FIREBASE CONFIG HERE
+    const firebaseConfig = { 
+      /* your config from Firebase console */
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
+  authDomain: "officebite-2026.firebaseapp.com",
+  projectId: "officebite-2026",
+  storageBucket: "officebite-2026.firebasestorage.app",
+  messagingSenderId: "221687690326",
+  appId: "1:221687690326:web:6e164899382ada305177f7",
+  measurementId: "G-75LVRGSW2C"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);};
+
+    let app, auth, db;
+    let currentUser = null;
+    let html5QrCode;
+
+    async function initFirebase() {
+      app = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.firestore();
+
+      // Anonymous sign-in
+      const user = await auth.signInAnonymously();
+      currentUser = user.user;
+      console.log("✅ Anonymous user ready:", currentUser.uid);
+    }
+
+    function startScanner() {
+      document.getElementById('scanner-screen').classList.add('hidden');
+      
+      const reader = document.createElement('div');
+      reader.id = 'reader';
+      document.querySelector('.max-w-md').appendChild(reader);
+
+      html5QrCode = new Html5Qrcode("reader");
+      
+      html5QrCode.start(
+        { facingMode: "environment" }, // rear camera
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Scan successful → try to collect
+          html5QrCode.stop().then(() => collectFood());
+        }
+      ).catch(err => alert("Camera error: " + err));
+    }
+
+    async function collectFood() {
+      if (!currentUser) return alert("Please wait...");
+
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // Check if already collected today
+      const userRef = db.collection("users").doc(currentUser.uid);
+      const doc = await userRef.get();
+
+      if (doc.exists && doc.data().lastCollection === today) {
+        document.getElementById('already-screen').classList.remove('hidden');
+        return;
+      }
+
+      // Record collection
+      await userRef.set({ lastCollection: today }, { merge: true });
+
+      // Increment today's count
+      const countRef = db.collection("dailyCounts").doc(today);
+      await countRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+
+      // Show coupon
+      showCoupon(today);
+    }
+
+    function showCoupon(today) {
+      const couponHTML = `
+        <div class="text-center">
+          <div class="text-5xl mb-4">🎟️</div>
+          <h2 class="text-3xl font-bold text-emerald-700">Breakfast Coupon</h2>
+          <p class="text-xl mt-6 text-gray-700">Date: <strong>${today}</strong></p>
+          <p class="mt-8 text-2xl font-semibold text-emerald-600">✅ Collected Successfully!</p>
+          <div class="mt-10 text-xs text-gray-400">Show this screen to the vendor</div>
+        </div>`;
+      
+      document.getElementById('coupon').innerHTML = couponHTML;
+      document.getElementById('result-screen').classList.remove('hidden');
+    }
+
+    function resetApp() {
+      location.reload();
+    }
+
+    // Initialize
+    window.onload = () => {
+      initFirebase();
+    };
+  </script>
+</body>
+</html>
