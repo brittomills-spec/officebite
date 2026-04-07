@@ -46,7 +46,7 @@
   </div>
 
   <script>
-    // 🔥 PASTE YOUR FIREBASE CONFIG HERE (same as before)
+    // 🔥 PASTE YOUR FIREBASE CONFIG HERE
 const firebaseConfig = {
   apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
   authDomain: "officebite-2026.firebaseapp.com",
@@ -63,7 +63,7 @@ const firebaseConfig = {
     // Get current IST time
     function getISTDateTime() {
       const now = new Date();
-      const istOffset = 330; // IST is UTC+5:30 in minutes
+      const istOffset = 330; // IST = UTC + 5:30
       const localOffset = now.getTimezoneOffset();
       const istTime = new Date(now.getTime() + (istOffset + localOffset) * 60000);
       
@@ -71,15 +71,28 @@ const firebaseConfig = {
       const dateStr = istTime.toLocaleDateString('en-IN', options);
       const timeStr = istTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
       
-      return { dateStr, timeStr, fullDate: istTime };
+      return { 
+        dateStr, 
+        timeStr, 
+        fullDate: istTime,
+        hour: istTime.getHours(),
+        today: istTime.toISOString().split('T')[0]
+      };
     }
 
     function updateDateTime() {
-      const { dateStr, timeStr } = getISTDateTime();
+      const { dateStr, timeStr, hour } = getISTDateTime();
       document.getElementById('datetime').innerHTML = `
         <div>${dateStr}</div>
         <div class="text-2xl font-semibold text-emerald-700">${timeStr} IST</div>
       `;
+
+      // Disable button after 3 PM
+      const btn = document.getElementById('collect-btn');
+      if (hour >= 15) {
+        btn.disabled = true;
+        btn.textContent = "Collection Closed (After 3 PM)";
+      }
     }
 
     async function initFirebase() {
@@ -93,7 +106,7 @@ const firebaseConfig = {
 
       const userCred = await auth.signInAnonymously();
       currentUser = userCred.user;
-      console.log("✅ Anonymous user:", currentUser.uid);
+      console.log("✅ Anonymous user ready:", currentUser.uid);
     }
 
     async function collectBreakfast() {
@@ -102,13 +115,11 @@ const firebaseConfig = {
         return;
       }
 
-      const now = getISTDateTime().fullDate;
-      const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
-      const currentHour = now.getHours();
+      const { fullDate, hour, today } = getISTDateTime();
 
-      // Cut-off time: 11 AM IST
-      if (currentHour >= 13) {
-        alert("Breakfast collection is closed after 11:00 AM.");
+      // Cut-off time: 3 PM IST
+      if (hour >= 15) {
+        alert("Breakfast collection is closed after 3:00 PM.");
         return;
       }
 
@@ -160,7 +171,7 @@ const firebaseConfig = {
     // Initialize
     window.onload = () => {
       updateDateTime();
-      setInterval(updateDateTime, 30000); // update time every 30 seconds
+      setInterval(updateDateTime, 30000); // Update time every 30 seconds
       initFirebase();
     };
   </script>
