@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OfficeBite - Vendor Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <!-- 🔥 PASTE SAME FIREBASE SDK SCRIPTS HERE -->
+  
+ <!-- 🔥 PASTE SAME FIREBASE SDK SCRIPTS HERE -->
   <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
@@ -34,40 +35,40 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
   <div class="max-w-md mx-auto p-6">
-    <h1 class="text-4xl font-bold text-center mb-8">🍱 Vendor Dashboard</h1>
+    <h1 class="text-4xl font-bold text-center mb-2">🍱 OfficeBite</h1>
+    <p class="text-emerald-400 text-center mb-8">Vendor Dashboard</p>
     
-    <div class="bg-white/10 backdrop-blur rounded-3xl p-8 text-center">
-      <p class="text-emerald-400 text-sm mb-2">BREAKFAST COLLECTED TODAY</p>
-      <div id="count" class="text-8xl font-bold text-white">0</div>
-      <p id="date" class="text-gray-400 mt-2"></p>
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-10 text-center shadow-2xl">
+      <p class="text-emerald-400 text-sm tracking-widest mb-1">BREAKFAST COLLECTED TODAY</p>
+      <div id="count" class="text-8xl font-bold text-white mb-2">0</div>
+      <p id="date" class="text-gray-400 text-lg"></p>
     </div>
 
-    <p class="text-center text-xs text-gray-500 mt-12">Live updates • Refresh page anytime</p>
+    <p class="text-center text-xs text-gray-500 mt-12">Real-time updates • Pull down to refresh</p>
   </div>
 
   <script>
-    const firebaseConfig = { 
-      /* SAME CONFIG AS ABOVE */
-      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
-  authDomain: "officebite-2026.firebaseapp.com",
-  projectId: "officebite-2026",
-  storageBucket: "officebite-2026.firebasestorage.app",
-  messagingSenderId: "221687690326",
-  appId: "1:221687690326:web:6e164899382ada305177f7",
-  measurementId: "G-75LVRGSW2C"
-};
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    // 🔥🔥🔥 PASTE YOUR EXACT FIREBASE CONFIG HERE (same as in index.html)
+    const firebaseConfig = {
+    const firebaseConfig = {
+    apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
+    authDomain: "officebite-2026.firebaseapp.com",
+    projectId: "officebite-2026",
+    storageBucket: "officebite-2026.firebasestorage.app",
+    messagingSenderId: "221687690326",
+    appId: "1:221687690326:web:6e164899382ada305177f7",
+    measurementId: "G-75LVRGSW2C"
+    };
     };
 
     let db;
 
-    async function init() {
+    async function initVendor() {
+      if (!firebaseConfig.apiKey) {
+        alert("Firebase config missing in vendor.html!");
+        return;
+      }
+
       const app = firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
 
@@ -75,14 +76,27 @@ const analytics = getAnalytics(app);
       document.getElementById('date').textContent = today;
 
       // Real-time listener
-      db.collection("dailyCounts").doc(today)
-        .onSnapshot(doc => {
-          const data = doc.data();
-          document.getElementById('count').textContent = data ? data.count || 0 : 0;
-        });
+      const countRef = db.collection("dailyCounts").doc(today);
+      
+      countRef.onSnapshot((doc) => {
+        const data = doc.data();
+        const currentCount = data && data.count ? data.count : 0;
+        document.getElementById('count').textContent = currentCount;
+        console.log(`✅ Count updated to: ${currentCount}`);
+      }, (error) => {
+        console.error("Listener error:", error);
+        alert("Error listening to updates. Check Firebase rules.");
+      });
+
+      // Create the document with 0 if it doesn't exist (helps with first increment)
+      countRef.get().then(doc => {
+        if (!doc.exists) {
+          countRef.set({ count: 0 });
+        }
+      });
     }
 
-    window.onload = init;
+    window.onload = initVendor;
   </script>
 </body>
 </html>
