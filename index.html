@@ -10,6 +10,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; }
+    .coupon {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-emerald-50 to-blue-50 min-h-screen">
@@ -20,9 +24,9 @@
     </div>
 
     <div id="home-screen" class="bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div id="datetime" class="text-lg font-medium text-gray-700 mb-8"></div>
+      <div id="datetime" class="text-lg font-medium text-gray-700 mb-6"></div>
       
-      <div id="status" class="mb-8"></div>
+      <div id="message" class="mb-8 text-sm font-medium"></div>
 
       <button onclick="collectBreakfast()" 
               id="collect-btn"
@@ -31,10 +35,12 @@
       </button>
     </div>
 
-    <div id="coupon-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div id="coupon" class="border-2 border-dashed border-emerald-400 rounded-2xl p-10"></div>
+    <div id="coupon-screen" class="hidden bg-white rounded-3xl shadow-2xl p-8 text-center">
+      <div id="coupon" class="coupon rounded-3xl p-10 text-white"></div>
       <button onclick="resetApp()" 
-              class="mt-8 text-emerald-600 font-medium text-lg">Done ✓</button>
+              class="mt-10 bg-white text-emerald-700 hover:bg-emerald-100 font-semibold px-8 py-4 rounded-2xl shadow-lg transition">
+        Done ✓
+      </button>
     </div>
 
     <div id="already-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
@@ -56,14 +62,12 @@ const firebaseConfig = {
   appId: "1:221687690326:web:6e164899382ada305177f7",
   measurementId: "G-75LVRGSW2C"
 };
-
     let app, auth, db;
     let currentUser = null;
 
-    // Get current IST time
     function getISTDateTime() {
       const now = new Date();
-      const istOffset = 330; // IST = UTC + 5:30
+      const istOffset = 330;
       const localOffset = now.getTimezoneOffset();
       const istTime = new Date(now.getTime() + (istOffset + localOffset) * 60000);
       
@@ -87,11 +91,17 @@ const firebaseConfig = {
         <div class="text-2xl font-semibold text-emerald-700">${timeStr} IST</div>
       `;
 
-      // Disable button after 3 PM
       const btn = document.getElementById('collect-btn');
+      const msg = document.getElementById('message');
+
       if (hour >= 15) {
         btn.disabled = true;
-        btn.textContent = "Collection Closed (After 3 PM)";
+        btn.textContent = "Collection Closed";
+        msg.innerHTML = `<span class="text-red-600">Collection is closed after 3:00 PM IST</span>`;
+      } else {
+        btn.disabled = false;
+        btn.textContent = "Collect Today's Breakfast";
+        msg.innerHTML = `<span class="text-emerald-600">Collection open until 3:00 PM IST</span>`;
       }
     }
 
@@ -106,7 +116,6 @@ const firebaseConfig = {
 
       const userCred = await auth.signInAnonymously();
       currentUser = userCred.user;
-      console.log("✅ Anonymous user ready:", currentUser.uid);
     }
 
     async function collectBreakfast() {
@@ -117,7 +126,6 @@ const firebaseConfig = {
 
       const { fullDate, hour, today } = getISTDateTime();
 
-      // Cut-off time: 3 PM IST
       if (hour >= 15) {
         alert("Breakfast collection is closed after 3:00 PM.");
         return;
@@ -133,10 +141,8 @@ const firebaseConfig = {
           return;
         }
 
-        // Record collection
         await userRef.set({ lastCollection: today }, { merge: true });
 
-        // Increment daily count
         const countRef = db.collection("dailyCounts").doc(today);
         await countRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
 
@@ -149,17 +155,33 @@ const firebaseConfig = {
 
     function showCoupon(today) {
       document.getElementById('home-screen').classList.add('hidden');
+      
       const couponHTML = `
         <div class="text-center">
-          <div class="text-6xl mb-6">🎟️</div>
-          <h2 class="text-3xl font-bold text-emerald-700">Breakfast Collected</h2>
-          <p class="text-xl mt-6 text-gray-700">Date: <strong>${today}</strong></p>
-          <div class="mt-10 py-6 bg-emerald-100 rounded-2xl text-emerald-700 font-semibold text-2xl">
-            ✅ Successfully Collected!
+          <div class="flex justify-center mb-4">
+            <div class="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-6 py-1.5 rounded-full border border-white/30">
+              OFFICIAL COUPON
+            </div>
           </div>
-          <p class="text-sm text-gray-500 mt-8">Please show this to the vendor</p>
+          
+          <div class="text-7xl mb-4">🍱</div>
+          
+          <h2 class="text-4xl font-bold tracking-tight">Breakfast Collected</h2>
+          
+          <div class="my-8 border-t border-white/30 pt-8">
+            <p class="text-emerald-100 text-lg">Date</p>
+            <p class="text-3xl font-semibold tracking-wider">${today}</p>
+          </div>
+
+          <div class="bg-white/20 backdrop-blur-md rounded-2xl py-6 px-10 mb-8">
+            <p class="text-2xl font-bold">✅ SUCCESSFULLY REDEEMED</p>
+          </div>
+
+          <div class="text-xs text-emerald-100/80 tracking-widest">
+            VALID FOR TODAY ONLY • SHOW TO VENDOR
+          </div>
         </div>`;
-      
+
       document.getElementById('coupon').innerHTML = couponHTML;
       document.getElementById('coupon-screen').classList.remove('hidden');
     }
@@ -168,10 +190,9 @@ const firebaseConfig = {
       location.reload();
     }
 
-    // Initialize
     window.onload = () => {
       updateDateTime();
-      setInterval(updateDateTime, 30000); // Update time every 30 seconds
+      setInterval(updateDateTime, 30000);
       initFirebase();
     };
   </script>
