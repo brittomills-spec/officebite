@@ -3,65 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OfficeBite - Collect Food</title>
+  <title>OfficeBite - Breakfast</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  
-  <!-- 🔥 PASTE YOUR FIREBASE SDK HERE (same as before) -->
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
-    authDomain: "officebite-2026.firebaseapp.com",
-    projectId: "officebite-2026",
-    storageBucket: "officebite-2026.firebasestorage.app",
-    messagingSenderId: "221687690326",
-    appId: "1:221687690326:web:6e164899382ada305177f7",
-    measurementId: "G-75LVRGSW2C"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
-  
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; }
-    #reader { width: 100%; max-width: 420px; margin: 20px auto; border-radius: 16px; overflow: hidden; }
   </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-emerald-50 min-h-screen">
+<body class="bg-gradient-to-br from-emerald-50 to-blue-50 min-h-screen">
   <div class="max-w-md mx-auto p-6">
-    <div class="text-center mb-8">
-      <h1 class="text-4xl font-bold text-emerald-600">🍱 OfficeBite</h1>
-      <p class="text-gray-600 mt-1">Scan to Collect Breakfast</p>
+    <div class="text-center mb-10">
+      <h1 class="text-5xl font-bold text-emerald-600">🍱 OfficeBite</h1>
+      <p class="text-gray-600 mt-2">Breakfast Collection</p>
     </div>
 
-    <div id="scanner-screen" class="space-y-6">
-      <div class="bg-white rounded-3xl shadow-xl p-8 text-center">
-        <button onclick="startScanner()" 
-                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-5 rounded-2xl text-xl flex items-center justify-center gap-3 active:scale-95 transition">
-          📸 Open Camera & Scan QR
-        </button>
-        <p class="text-center text-sm text-gray-500 mt-6">Point your phone's rear camera at the QR code placed at the food counter</p>
-      </div>
+    <div id="home-screen" class="bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div id="datetime" class="text-lg font-medium text-gray-700 mb-8"></div>
+      
+      <div id="status" class="mb-8"></div>
+
+      <button onclick="collectBreakfast()" 
+              id="collect-btn"
+              class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-semibold py-6 rounded-2xl text-2xl transition">
+        Collect Today's Breakfast
+      </button>
     </div>
 
-    <div id="result-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div id="coupon" class="border-2 border-dashed border-emerald-400 rounded-2xl p-8 mb-6"></div>
+    <div id="coupon-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div id="coupon" class="border-2 border-dashed border-emerald-400 rounded-2xl p-10"></div>
       <button onclick="resetApp()" 
-              class="mt-4 text-emerald-600 font-medium text-lg">Done ✓</button>
+              class="mt-8 text-emerald-600 font-medium text-lg">Done ✓</button>
     </div>
 
     <div id="already-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
@@ -73,8 +46,7 @@
   </div>
 
   <script>
-    // 🔥🔥🔥 PASTE YOUR COMPLETE FIREBASE CONFIG HERE (from Firebase console)
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    // 🔥 PASTE YOUR FIREBASE CONFIG HERE (same as before)
 const firebaseConfig = {
   apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
   authDomain: "officebite-2026.firebaseapp.com",
@@ -87,83 +59,70 @@ const firebaseConfig = {
 
     let app, auth, db;
     let currentUser = null;
-    let html5QrCode = null;
+
+    // Get current IST time
+    function getISTDateTime() {
+      const now = new Date();
+      const istOffset = 330; // IST is UTC+5:30 in minutes
+      const localOffset = now.getTimezoneOffset();
+      const istTime = new Date(now.getTime() + (istOffset + localOffset) * 60000);
+      
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const dateStr = istTime.toLocaleDateString('en-IN', options);
+      const timeStr = istTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      
+      return { dateStr, timeStr, fullDate: istTime };
+    }
+
+    function updateDateTime() {
+      const { dateStr, timeStr } = getISTDateTime();
+      document.getElementById('datetime').innerHTML = `
+        <div>${dateStr}</div>
+        <div class="text-2xl font-semibold text-emerald-700">${timeStr} IST</div>
+      `;
+    }
 
     async function initFirebase() {
       if (!firebaseConfig.apiKey) {
-        alert("Firebase config is missing! Please add it in the code.");
+        alert("Firebase config is missing!");
         return;
       }
       app = firebase.initializeApp(firebaseConfig);
       auth = firebase.auth();
       db = firebase.firestore();
 
-      try {
-        const userCred = await auth.signInAnonymously();
-        currentUser = userCred.user;
-        console.log("✅ Anonymous user ready:", currentUser.uid);
-      } catch (e) {
-        console.error("Firebase auth error:", e);
-        alert("Connection error. Please refresh and try again.");
-      }
+      const userCred = await auth.signInAnonymously();
+      currentUser = userCred.user;
+      console.log("✅ Anonymous user:", currentUser.uid);
     }
 
-    async function startScanner() {
+    async function collectBreakfast() {
       if (!currentUser) {
-        alert("Please wait a moment for setup...");
+        alert("Please wait a moment...");
         return;
       }
 
-      // Hide button area
-      document.getElementById('scanner-screen').classList.add('hidden');
+      const now = getISTDateTime().fullDate;
+      const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const currentHour = now.getHours();
 
-      // Create reader div if not exists
-      let readerDiv = document.getElementById('reader');
-      if (!readerDiv) {
-        readerDiv = document.createElement('div');
-        readerDiv.id = 'reader';
-        document.querySelector('.max-w-md').appendChild(readerDiv);
+      // Cut-off time: 11 AM IST
+      if (currentHour >= 11) {
+        alert("Breakfast collection is closed after 11:00 AM.");
+        return;
       }
-
-      html5QrCode = new Html5Qrcode("reader");
-
-      try {
-        await html5QrCode.start(
-          { facingMode: { exact: "environment" } },   // Force rear camera
-          { 
-            fps: 10, 
-            qrbox: { width: 260, height: 260 },
-            aspectRatio: 1.0
-          },
-          (decodedText) => {
-            // Successfully scanned any QR → proceed to collect
-            html5QrCode.stop().then(() => {
-              collectFood();
-            }).catch(err => console.log("Stop error", err));
-          }
-        );
-      } catch (err) {
-        console.error(err);
-        alert("Camera failed to start.\n\nMake sure you allowed camera permission and try again.\n\nTip: Use Chrome on Android.");
-        resetApp();
-      }
-    }
-
-    async function collectFood() {
-      if (!currentUser) return;
-
-      const today = new Date().toISOString().split('T')[0];
 
       try {
         const userRef = db.collection("users").doc(currentUser.uid);
         const doc = await userRef.get();
 
         if (doc.exists && doc.data().lastCollection === today) {
+          document.getElementById('home-screen').classList.add('hidden');
           document.getElementById('already-screen').classList.remove('hidden');
           return;
         }
 
-        // Record today's collection
+        // Record collection
         await userRef.set({ lastCollection: today }, { merge: true });
 
         // Increment daily count
@@ -173,35 +132,35 @@ const firebaseConfig = {
         showCoupon(today);
       } catch (e) {
         console.error(e);
-        alert("Something went wrong. Please try again.");
+        alert("Error collecting breakfast. Please try again.");
       }
     }
 
     function showCoupon(today) {
+      document.getElementById('home-screen').classList.add('hidden');
       const couponHTML = `
         <div class="text-center">
-          <div class="text-6xl mb-4">🎟️</div>
+          <div class="text-6xl mb-6">🎟️</div>
           <h2 class="text-3xl font-bold text-emerald-700">Breakfast Collected</h2>
-          <p class="text-xl mt-6">Date: <strong>${today}</strong></p>
-          <div class="mt-10 py-4 bg-emerald-100 rounded-xl text-emerald-700 font-semibold">
+          <p class="text-xl mt-6 text-gray-700">Date: <strong>${today}</strong></p>
+          <div class="mt-10 py-6 bg-emerald-100 rounded-2xl text-emerald-700 font-semibold text-2xl">
             ✅ Successfully Collected!
           </div>
-          <p class="text-xs text-gray-400 mt-8">Show this screen to the vendor</p>
+          <p class="text-sm text-gray-500 mt-8">Please show this to the vendor</p>
         </div>`;
       
       document.getElementById('coupon').innerHTML = couponHTML;
-      document.getElementById('result-screen').classList.remove('hidden');
+      document.getElementById('coupon-screen').classList.remove('hidden');
     }
 
     function resetApp() {
-      if (html5QrCode) {
-        html5QrCode.clear().catch(() => {});
-      }
       location.reload();
     }
 
-    // Initialize everything
+    // Initialize
     window.onload = () => {
+      updateDateTime();
+      setInterval(updateDateTime, 30000); // update time every 30 seconds
       initFirebase();
     };
   </script>
