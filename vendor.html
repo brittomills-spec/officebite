@@ -5,94 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OfficeBite - Vendor Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  
- <!-- 🔥 PASTE SAME FIREBASE SDK SCRIPTS HERE -->
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
-    authDomain: "officebite-2026.firebaseapp.com",
-    projectId: "officebite-2026",
-    storageBucket: "officebite-2026.firebasestorage.app",
-    messagingSenderId: "221687690326",
-    appId: "1:221687690326:web:6e164899382ada305177f7",
-    measurementId: "G-75LVRGSW2C"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
   <div class="max-w-md mx-auto p-6">
-    <h1 class="text-4xl font-bold text-center mb-2">🍱 OfficeBite</h1>
+    <h1 class="text-4xl font-bold text-center mb-1">🍱 OfficeBite</h1>
     <p class="text-emerald-400 text-center mb-8">Vendor Dashboard</p>
     
-    <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-10 text-center shadow-2xl">
-      <p class="text-emerald-400 text-sm tracking-widest mb-1">BREAKFAST COLLECTED TODAY</p>
-      <div id="count" class="text-8xl font-bold text-white mb-2">0</div>
-      <p id="date" class="text-gray-400 text-lg"></p>
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl p-10 text-center">
+      <p class="text-emerald-400 text-sm tracking-widest mb-2">BREAKFAST COLLECTED TODAY</p>
+      <div id="count" class="text-8xl font-bold text-white mb-3">0</div>
+      <p id="date" class="text-gray-400 text-lg mb-1"></p>
+      <p id="time" class="text-gray-500 text-sm"></p>
     </div>
 
-    <p class="text-center text-xs text-gray-500 mt-12">Real-time updates • Pull down to refresh</p>
+    <p class="text-center text-xs text-gray-500 mt-12">Real-time • Auto updates</p>
   </div>
 
   <script>
-    // 🔥🔥🔥 PASTE YOUR EXACT FIREBASE CONFIG HERE (same as in index.html)
-    const firebaseConfig = {
-    const firebaseConfig = {
-    apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
-    authDomain: "officebite-2026.firebaseapp.com",
-    projectId: "officebite-2026",
-    storageBucket: "officebite-2026.firebasestorage.app",
-    messagingSenderId: "221687690326",
-    appId: "1:221687690326:web:6e164899382ada305177f7",
-    measurementId: "G-75LVRGSW2C"
-    };
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
+  authDomain: "officebite-2026.firebaseapp.com",
+  projectId: "officebite-2026",
+  storageBucket: "officebite-2026.firebasestorage.app",
+  messagingSenderId: "221687690326",
+  appId: "1:221687690326:web:6e164899382ada305177f7",
+  measurementId: "G-75LVRGSW2C"
+};
 
     let db;
 
+    function getISTDateTime() {
+      const now = new Date();
+      const istOffset = 330;
+      const localOffset = now.getTimezoneOffset();
+      const istTime = new Date(now.getTime() + (istOffset + localOffset) * 60000);
+      
+      const dateStr = istTime.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const timeStr = istTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      
+      return { dateStr, timeStr, today: istTime.toISOString().split('T')[0] };
+    }
+
     async function initVendor() {
       if (!firebaseConfig.apiKey) {
-        alert("Firebase config missing in vendor.html!");
+        alert("Firebase config missing in vendor.html");
         return;
       }
 
       const app = firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
 
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('date').textContent = today;
+      const { dateStr, timeStr, today } = getISTDateTime();
+      document.getElementById('date').textContent = dateStr;
+      document.getElementById('time').textContent = timeStr + " IST";
 
       // Real-time listener
       const countRef = db.collection("dailyCounts").doc(today);
       
       countRef.onSnapshot((doc) => {
         const data = doc.data();
-        const currentCount = data && data.count ? data.count : 0;
-        document.getElementById('count').textContent = currentCount;
-        console.log(`✅ Count updated to: ${currentCount}`);
-      }, (error) => {
-        console.error("Listener error:", error);
-        alert("Error listening to updates. Check Firebase rules.");
+        document.getElementById('count').textContent = data ? (data.count || 0) : 0;
       });
 
-      // Create the document with 0 if it doesn't exist (helps with first increment)
+      // Create document if not exists
       countRef.get().then(doc => {
-        if (!doc.exists) {
-          countRef.set({ count: 0 });
-        }
+        if (!doc.exists) countRef.set({ count: 0 });
       });
     }
 
