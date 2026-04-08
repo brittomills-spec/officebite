@@ -133,9 +133,14 @@
 
   async function validateEmployeeId() {
   const input = document.getElementById('emp-id').value.trim().toUpperCase();
-  if (!input) return alert("Please enter Employee ID");
+  if (!input) {
+    alert("Please enter Employee ID");
+    return;
+  }
 
   try {
+    console.log("Checking Employee ID:", input);   // For debugging
+
     const doc = await db.collection("validEmployees").doc(input).get();
     
     if (!doc.exists) {
@@ -146,7 +151,7 @@
     currentEmployeeId = input;
     localStorage.setItem('officebite_emp_id', currentEmployeeId);
 
-    // Check if PIN already exists
+    // Check if PIN exists
     const pinDoc = await db.collection("employeePins").doc(input).get();
     
     document.getElementById('id-screen').classList.add('hidden');
@@ -162,10 +167,11 @@
       isNewUser = true;
     }
   } catch (e) {
-    console.error(e);
-    alert("Connection error. Please check your internet and try again.\n\nIf the problem continues, contact the admin.");
+    console.error("Validation Error:", e);   // This will show in browser console
+    alert("Error: " + (e.message || e.code || "Unknown error") + "\n\nPlease try again or contact admin.");
   }
 }
+    
 
     async function handlePin() {
       const pin = document.getElementById('pin-input').value.trim();
