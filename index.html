@@ -131,39 +131,41 @@
       db = firebase.firestore();
     }
 
-    async function validateEmployeeId() {
-      const input = document.getElementById('emp-id').value.trim().toUpperCase();
-      if (!input) return alert("Please enter Employee ID");
+  async function validateEmployeeId() {
+  const input = document.getElementById('emp-id').value.trim().toUpperCase();
+  if (!input) return alert("Please enter Employee ID");
 
-      try {
-        const doc = await db.collection("validEmployees").doc(input).get();
-        if (!doc.exists) {
-          alert("❌ Invalid Employee ID. Please contact HR.");
-          return;
-        }
-
-        currentEmployeeId = input;
-        localStorage.setItem('officebite_emp_id', currentEmployeeId);
-
-        // Check if PIN already exists
-        const pinDoc = await db.collection("employeePins").doc(input).get();
-        
-        document.getElementById('id-screen').classList.add('hidden');
-        document.getElementById('pin-screen').classList.remove('hidden');
-
-        if (pinDoc.exists) {
-          document.getElementById('pin-title').textContent = "Enter Your 4-Digit PIN";
-          document.getElementById('pin-hint').textContent = "For security verification";
-          isNewUser = false;
-        } else {
-          document.getElementById('pin-title').textContent = "Set Your 4-Digit PIN";
-          document.getElementById('pin-hint').textContent = "You'll need this PIN every time";
-          isNewUser = true;
-        }
-      } catch (e) {
-        alert("Error validating ID. Please try again.");
-      }
+  try {
+    const doc = await db.collection("validEmployees").doc(input).get();
+    
+    if (!doc.exists) {
+      alert("❌ Invalid Employee ID. Please contact HR.");
+      return;
     }
+
+    currentEmployeeId = input;
+    localStorage.setItem('officebite_emp_id', currentEmployeeId);
+
+    // Check if PIN already exists
+    const pinDoc = await db.collection("employeePins").doc(input).get();
+    
+    document.getElementById('id-screen').classList.add('hidden');
+    document.getElementById('pin-screen').classList.remove('hidden');
+
+    if (pinDoc.exists) {
+      document.getElementById('pin-title').textContent = "Enter Your 4-Digit PIN";
+      document.getElementById('pin-hint').textContent = "For security verification";
+      isNewUser = false;
+    } else {
+      document.getElementById('pin-title').textContent = "Set Your 4-Digit PIN";
+      document.getElementById('pin-hint').textContent = "You'll need this PIN every time";
+      isNewUser = true;
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Connection error. Please check your internet and try again.\n\nIf the problem continues, contact the admin.");
+  }
+}
 
     async function handlePin() {
       const pin = document.getElementById('pin-input').value.trim();
