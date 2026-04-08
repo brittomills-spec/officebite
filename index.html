@@ -10,10 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; }
-    .coupon {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
-    }
+    .coupon { background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4); }
   </style>
 </head>
 <body class="bg-gradient-to-br from-emerald-50 to-blue-50 min-h-screen">
@@ -23,8 +20,35 @@
       <p class="text-gray-600 mt-2">Breakfast Collection</p>
     </div>
 
-    <div id="home-screen" class="bg-white rounded-3xl shadow-xl p-8 text-center">
-      <div id="datetime" class="text-lg font-medium text-gray-700 mb-6"></div>
+    <!-- Step 1: Employee ID -->
+    <div id="id-screen" class="bg-white rounded-3xl shadow-xl p-8">
+      <h2 class="text-2xl font-semibold text-center mb-6">Enter Your Employee ID</h2>
+      <input id="emp-id" type="text" 
+             class="w-full border-2 border-gray-300 focus:border-emerald-500 rounded-2xl px-5 py-4 text-xl text-center uppercase tracking-wider"
+             placeholder="EMP00123 or 5001" maxlength="20">
+      <button onclick="validateEmployeeId()" 
+              class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-5 rounded-2xl text-xl">
+        Continue
+      </button>
+    </div>
+
+    <!-- Step 2: PIN Screen (Set or Enter) -->
+    <div id="pin-screen" class="hidden bg-white rounded-3xl shadow-xl p-8">
+      <h2 id="pin-title" class="text-2xl font-semibold text-center mb-6">Enter 4-Digit PIN</h2>
+      <input id="pin-input" type="password" maxlength="4" inputmode="numeric"
+             class="w-full border-2 border-gray-300 focus:border-emerald-500 rounded-2xl px-5 py-4 text-3xl text-center tracking-widest"
+             placeholder="••••">
+      <button onclick="handlePin()" 
+              class="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-5 rounded-2xl text-xl">
+        Submit
+      </button>
+      <p id="pin-hint" class="text-center text-xs text-gray-500 mt-6"></p>
+    </div>
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
+      <div id="datetime" class="text-lg font-medium text-gray-700 mb-4"></div>
+      <div id="emp-display" class="text-emerald-700 font-semibold mb-6"></div>
       
       <div id="message" class="mb-8 text-sm font-medium"></div>
 
@@ -35,14 +59,15 @@
       </button>
     </div>
 
+    <!-- Fancy Coupon -->
     <div id="coupon-screen" class="hidden bg-white rounded-3xl shadow-2xl p-8 text-center">
       <div id="coupon" class="coupon rounded-3xl p-10 text-white"></div>
-      <button onclick="resetApp()" 
-              class="mt-10 bg-white text-emerald-700 hover:bg-emerald-100 font-semibold px-8 py-4 rounded-2xl shadow-lg transition">
+      <button onclick="resetApp()" class="mt-10 bg-white text-emerald-700 hover:bg-emerald-100 font-semibold px-8 py-4 rounded-2xl shadow-lg transition">
         Done ✓
       </button>
     </div>
 
+    <!-- Already Collected -->
     <div id="already-screen" class="hidden bg-white rounded-3xl shadow-xl p-8 text-center">
       <div class="text-6xl mb-4">🙅‍♂️</div>
       <h2 class="text-2xl font-semibold text-gray-800">Already Collected Today</h2>
@@ -52,8 +77,7 @@
   </div>
 
   <script>
-    // 🔥 PASTE YOUR FIREBASE CONFIG HERE
-const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyDdxUmiVKz1HrWXskW50VdfAo-O8VvG63I",
   authDomain: "officebite-2026.firebaseapp.com",
   projectId: "officebite-2026",
@@ -62,8 +86,10 @@ const firebaseConfig = {
   appId: "1:221687690326:web:6e164899382ada305177f7",
   measurementId: "G-75LVRGSW2C"
 };
-    let app, auth, db;
-    let currentUser = null;
+
+    let app, db;
+    let currentEmployeeId = null;
+    let isNewUser = false;   // To know if PIN needs to be set
 
     function getISTDateTime() {
       const now = new Date();
@@ -71,14 +97,9 @@ const firebaseConfig = {
       const localOffset = now.getTimezoneOffset();
       const istTime = new Date(now.getTime() + (istOffset + localOffset) * 60000);
       
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      const dateStr = istTime.toLocaleDateString('en-IN', options);
-      const timeStr = istTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-      
       return { 
-        dateStr, 
-        timeStr, 
-        fullDate: istTime,
+        dateStr: istTime.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        timeStr: istTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         hour: istTime.getHours(),
         today: istTime.toISOString().split('T')[0]
       };
@@ -97,7 +118,7 @@ const firebaseConfig = {
       if (hour >= 15) {
         btn.disabled = true;
         btn.textContent = "Collection Closed";
-        msg.innerHTML = `<span class="text-red-600">Collection is closed after 3:00 PM IST</span>`;
+        msg.innerHTML = `<span class="text-red-600">Collection closed after 3:00 PM IST</span>`;
       } else {
         btn.disabled = false;
         btn.textContent = "Collect Today's Breakfast";
@@ -106,25 +127,78 @@ const firebaseConfig = {
     }
 
     async function initFirebase() {
-      if (!firebaseConfig.apiKey) {
-        alert("Firebase config is missing!");
+      app = firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+    }
+
+    async function validateEmployeeId() {
+      const input = document.getElementById('emp-id').value.trim().toUpperCase();
+      if (!input) return alert("Please enter Employee ID");
+
+      try {
+        const doc = await db.collection("validEmployees").doc(input).get();
+        if (!doc.exists) {
+          alert("❌ Invalid Employee ID. Please contact HR.");
+          return;
+        }
+
+        currentEmployeeId = input;
+        localStorage.setItem('officebite_emp_id', currentEmployeeId);
+
+        // Check if PIN already exists
+        const pinDoc = await db.collection("employeePins").doc(input).get();
+        
+        document.getElementById('id-screen').classList.add('hidden');
+        document.getElementById('pin-screen').classList.remove('hidden');
+
+        if (pinDoc.exists) {
+          document.getElementById('pin-title').textContent = "Enter Your 4-Digit PIN";
+          document.getElementById('pin-hint').textContent = "For security verification";
+          isNewUser = false;
+        } else {
+          document.getElementById('pin-title').textContent = "Set Your 4-Digit PIN";
+          document.getElementById('pin-hint').textContent = "You'll need this PIN every time";
+          isNewUser = true;
+        }
+      } catch (e) {
+        alert("Error validating ID. Please try again.");
+      }
+    }
+
+    async function handlePin() {
+      const pin = document.getElementById('pin-input').value.trim();
+      if (pin.length !== 4 || isNaN(pin)) {
+        alert("Please enter a valid 4-digit PIN");
         return;
       }
-      app = firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
 
-      const userCred = await auth.signInAnonymously();
-      currentUser = userCred.user;
+      if (isNewUser) {
+        // Save new PIN
+        await db.collection("employeePins").doc(currentEmployeeId).set({ pin: pin });
+        proceedToHome();
+      } else {
+        // Verify existing PIN
+        const pinDoc = await db.collection("employeePins").doc(currentEmployeeId).get();
+        if (pinDoc.exists && pinDoc.data().pin === pin) {
+          proceedToHome();
+        } else {
+          alert("❌ Incorrect PIN. Please try again.");
+          document.getElementById('pin-input').value = "";
+        }
+      }
+    }
+
+    function proceedToHome() {
+      document.getElementById('pin-screen').classList.add('hidden');
+      document.getElementById('home-screen').classList.remove('hidden');
+      document.getElementById('emp-display').innerHTML = `Employee ID: <strong>${currentEmployeeId}</strong>`;
+      updateDateTime();
     }
 
     async function collectBreakfast() {
-      if (!currentUser) {
-        alert("Please wait a moment...");
-        return;
-      }
+      if (!currentEmployeeId) return;
 
-      const { fullDate, hour, today } = getISTDateTime();
+      const { hour, today } = getISTDateTime();
 
       if (hour >= 15) {
         alert("Breakfast collection is closed after 3:00 PM.");
@@ -132,8 +206,8 @@ const firebaseConfig = {
       }
 
       try {
-        const userRef = db.collection("users").doc(currentUser.uid);
-        const doc = await userRef.get();
+        const empRef = db.collection("employeeClaims").doc(currentEmployeeId);
+        const doc = await empRef.get();
 
         if (doc.exists && doc.data().lastCollection === today) {
           document.getElementById('home-screen').classList.add('hidden');
@@ -141,14 +215,13 @@ const firebaseConfig = {
           return;
         }
 
-        await userRef.set({ lastCollection: today }, { merge: true });
+        await empRef.set({ lastCollection: today, timestamp: new Date() }, { merge: true });
 
         const countRef = db.collection("dailyCounts").doc(today);
         await countRef.set({ count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
 
         showCoupon(today);
       } catch (e) {
-        console.error(e);
         alert("Error collecting breakfast. Please try again.");
       }
     }
@@ -160,23 +233,18 @@ const firebaseConfig = {
         <div class="text-center">
           <div class="flex justify-center mb-4">
             <div class="bg-white/20 backdrop-blur-md text-white text-xs font-bold px-6 py-1.5 rounded-full border border-white/30">
-              OFFICIAL COUPON
+              OFFICIAL COUPON • ${currentEmployeeId}
             </div>
           </div>
-          
           <div class="text-7xl mb-4">🍱</div>
-          
           <h2 class="text-4xl font-bold tracking-tight">Breakfast Collected</h2>
-          
           <div class="my-8 border-t border-white/30 pt-8">
             <p class="text-emerald-100 text-lg">Date</p>
             <p class="text-3xl font-semibold tracking-wider">${today}</p>
           </div>
-
           <div class="bg-white/20 backdrop-blur-md rounded-2xl py-6 px-10 mb-8">
             <p class="text-2xl font-bold">✅ SUCCESSFULLY REDEEMED</p>
           </div>
-
           <div class="text-xs text-emerald-100/80 tracking-widest">
             VALID FOR TODAY ONLY • SHOW TO VENDOR
           </div>
@@ -186,14 +254,20 @@ const firebaseConfig = {
       document.getElementById('coupon-screen').classList.remove('hidden');
     }
 
-    function resetApp() {
-      location.reload();
-    }
+    function resetApp() { location.reload(); }
 
     window.onload = () => {
-      updateDateTime();
-      setInterval(updateDateTime, 30000);
       initFirebase();
+      
+      const savedId = localStorage.getItem('officebite_emp_id');
+      if (savedId) {
+        currentEmployeeId = savedId;
+        document.getElementById('id-screen').classList.add('hidden');
+        document.getElementById('pin-screen').classList.remove('hidden');
+        document.getElementById('pin-title').textContent = "Enter Your 4-Digit PIN";
+        document.getElementById('pin-hint').textContent = "For security verification";
+        isNewUser = false;
+      }
     };
   </script>
 </body>
